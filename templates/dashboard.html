@@ -1,0 +1,492 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Intelligent Compliance Automation{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="dashboard-header">
+        <h1>Welcome, {{ user.username }}! 👋</h1>
+        <p class="subtitle">Compliance Validation Dashboard</p>
+    </div>
+
+    <div class="help-card">
+        <p><strong>Quick Start:</strong> Validate one transaction using the form, or upload a CSV to process bulk records. Make sure the CSV includes <code>Customer Email</code>, <code>Transaction Amount</code>, and <code>GST</code>.</p>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-content">
+                <p class="stat-label">Total Transactions</p>
+                <h3 class="stat-value">{{ stats.total_transactions }}</h3>
+            </div>
+        </div>
+
+        <div class="stat-card success">
+            <div class="stat-icon">✓</div>
+            <div class="stat-content">
+                <p class="stat-label">Compliant</p>
+                <h3 class="stat-value">{{ stats.compliant }}</h3>
+            </div>
+        </div>
+
+        <div class="stat-card warning">
+            <div class="stat-icon">⚠️</div>
+            <div class="stat-content">
+                <p class="stat-label">Non-Compliant</p>
+                <h3 class="stat-value">{{ stats.non_compliant }}</h3>
+            </div>
+        </div>
+
+        <div class="stat-card danger">
+            <div class="stat-icon">🔴</div>
+            <div class="stat-content">
+                <p class="stat-label">High Risk</p>
+                <h3 class="stat-value">{{ stats.high_risk }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="content-grid">
+        <!-- Left Column: Validation Form -->
+        <div class="section">
+            <h2>🔍 Single Transaction Validation</h2>
+            
+            <form id="validationForm" class="form">
+                <div class="form-group">
+                    <label for="email">Customer Email</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        placeholder="customer@example.com"
+                        required
+                    >
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="amount">Transaction Amount ($)</label>
+                        <input 
+                            type="number" 
+                            id="amount" 
+                            name="amount" 
+                            placeholder="0.00"
+                            step="0.01"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="gst">GST Rate (%)</label>
+                        <select id="gst" name="gst" required>
+                            <option value="">Select GST Rate</option>
+                            <option value="5">5%</option>
+                            <option value="12">12%</option>
+                            <option value="18">18%</option>
+                            <option value="28">28%</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg">
+                    ✓ Validate Transaction
+                </button>
+            </form>
+
+            <!-- Validation Result -->
+            <div id="validationResult" class="result-card hidden">
+                <div class="result-header">
+                    <h3>Validation Result</h3>
+                    <span id="resultStatus" class="status-badge"></span>
+                </div>
+
+                <div class="result-details">
+                    <div class="detail-row">
+                        <strong>Email:</strong>
+                        <span id="resultEmail"></span>
+                    </div>
+                    <div class="detail-row">
+                        <strong>Amount:</strong>
+                        <span id="resultAmount"></span>
+                    </div>
+                    <div class="detail-row">
+                        <strong>GST:</strong>
+                        <span id="resultGst"></span>
+                    </div>
+                    <div class="detail-row">
+                        <strong>Risk Level:</strong>
+                        <span id="resultRiskLevel"></span>
+                    </div>
+                    <div class="detail-row">
+                        <strong>Risk Score:</strong>
+                        <div class="progress-bar">
+                            <div id="resultRiskBar" class="progress-fill"></div>
+                        </div>
+                        <span id="resultRiskScore"></span>
+                    </div>
+                </div>
+
+                <div id="violationsContainer" class="violations-section hidden">
+                    <h4>⚠️ Violations Detected</h4>
+                    <ul id="violationsList" class="violations-list"></ul>
+                </div>
+
+                <div class="explanation-section">
+                    <div class="explanation-header">
+                        <h4>🤖 AI Analysis</h4>
+                        <span id="explanationSource" class="explanation-source">Processing intelligence...</span>
+                    </div>
+                    <div id="explanationText" class="explanation-text"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: CSV Upload & Downloads -->
+        <div class="section">
+            <h2>📁 Batch Processing</h2>
+
+            <!-- CSV Upload -->
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📤</div>
+                <p class="upload-title">Upload CSV File</p>
+                <p class="upload-subtitle">Drag & drop or click to select</p>
+                <input 
+                    type="file" 
+                    id="csvFile" 
+                    name="csvFile" 
+                    accept=".csv"
+                    hidden
+                >
+            </div>
+
+            <p class="upload-help">
+                CSV must include columns: <code>Customer Email</code>, <code>Transaction Amount</code>, <code>GST</code>
+            </p>
+
+            <div class="upload-actions">
+                <button type="button" class="btn btn-secondary" onclick="downloadSampleCsv()">📄 Download Sample CSV</button>
+            </div>
+
+            <!-- Upload Progress -->
+            <div id="uploadProgress" class="upload-progress hidden">
+                <div class="progress-bar">
+                    <div id="uploadProgressBar" class="progress-fill"></div>
+                </div>
+                <p id="uploadProgressText">Processing...</p>
+            </div>
+
+            <!-- Upload Results -->
+            <div id="uploadResults" class="result-card hidden">
+                <div class="result-header">
+                    <h3>Upload Complete</h3>
+                </div>
+                <div id="uploadSummaryText" class="upload-summary-text">Processed upload results and generated a preview.</div>
+                
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <strong id="totalRecords">0</strong>
+                        <p>Total Records</p>
+                    </div>
+                    <div class="summary-item success">
+                        <strong id="compliantRecords">0</strong>
+                        <p>Compliant</p>
+                    </div>
+                    <div class="summary-item warning">
+                        <strong id="nonCompliantRecords">0</strong>
+                        <p>Non-Compliant</p>
+                    </div>
+                    <div class="summary-item danger">
+                        <strong id="highRiskRecords">0</strong>
+                        <p>High Risk</p>
+                    </div>
+                </div>
+
+                <div id="uploadResultsTable" class="table-container">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>Amount</th>
+                                <th>GST</th>
+                                <th>Status</th>
+                                <th>Risk</th>
+                            </tr>
+                        </thead>
+                        <tbody id="uploadResultsBody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <button class="btn btn-success" onclick="downloadReport()">
+                    📥 Download Full Report
+                </button>
+            </div>
+
+            <hr class="divider">
+
+            <!-- Download Report Section -->
+            <div class="download-section">
+                <h3>📊 Download Full Report</h3>
+                <p>Export all your compliance validations as CSV</p>
+                <button class="btn btn-success btn-lg" onclick="downloadReport()">
+                    📥 Download Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Transactions -->
+    {% if transactions %}
+    <div class="section wider">
+        <h2>📋 Recent Transactions</h2>
+        
+        <div class="table-container">
+            <table class="transactions-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Email</th>
+                        <th>Amount</th>
+                        <th>GST</th>
+                        <th>Status</th>
+                        <th>Risk</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions %}
+                    <tr>
+                        <td>#{{ transaction.id }}</td>
+                        <td>{{ transaction.customer_email }}</td>
+                        <td>${{ "%.2f"|format(transaction.amount) }}</td>
+                        <td>{{ transaction.gst }}%</td>
+                        <td>
+                            {% if transaction.is_compliant %}
+                            <span class="badge badge-success">✓ Compliant</span>
+                            {% else %}
+                            <span class="badge badge-danger">✗ Non-Compliant</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ transaction.risk_level|lower }}">
+                                {{ transaction.risk_level }}
+                            </span>
+                        </td>
+                        <td>{{ transaction.created_at[:10] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Sample CSV Modal/Help -->
+<div id="sampleCsvModal" class="modal hidden">
+    <div class="modal-content">
+        <h3>CSV File Format</h3>
+        <pre class="sample-csv">Customer Email,Transaction Amount,GST
+john@example.com,50000,18
+jane@example.com,150000,12
+bob@example.com,75000,5</pre>
+        <button class="btn btn-primary" onclick="closeSampleCsv()">Close</button>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Form submission
+document.getElementById('validationForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(document.getElementById('validationForm'));
+    
+    try {
+        const response = await fetch('{{ url_for("validate") }}', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            showNotification('Validation failed: ' + data.error, 'danger');
+            return;
+        }
+        
+        // Display result
+        showValidationResult(data);
+        showNotification('Validation completed successfully.', 'success');
+    } catch (error) {
+        showNotification('Validation error: ' + error.message, 'danger');
+    }
+});
+
+function showValidationResult(data) {
+    const resultDiv = document.getElementById('validationResult');
+    const statusBadge = document.getElementById('resultStatus');
+    const riskColors = { 'Low': 'success', 'Medium': 'warning', 'High': 'danger' };
+    
+    // Update badge
+    if (data.is_compliant) {
+        statusBadge.className = 'status-badge success';
+        statusBadge.textContent = '✓ COMPLIANT';
+    } else {
+        statusBadge.className = 'status-badge danger';
+        statusBadge.textContent = '✗ NON-COMPLIANT';
+    }
+    
+    // Update details
+    document.getElementById('resultEmail').textContent = data.email;
+    document.getElementById('resultAmount').textContent = `$${data.amount.toFixed(2)}`;
+    document.getElementById('resultGst').textContent = `${data.gst}%`;
+    
+    const riskColor = riskColors[data.risk_level] || 'warning';
+    document.getElementById('resultRiskLevel').innerHTML = 
+        `<span class="badge badge-${riskColor}">${data.risk_level}</span>`;
+    
+    // Risk score
+    const riskScore = Math.min(100, data.risk_score);
+    document.getElementById('resultRiskBar').style.width = riskScore + '%';
+    document.getElementById('resultRiskBar').className = `progress-fill ${riskColor}`;
+    document.getElementById('resultRiskScore').textContent = `${riskScore}/100`;
+    
+    // Violations
+    const violationsContainer = document.getElementById('violationsContainer');
+    if (data.violations.length > 0) {
+        violationsContainer.classList.remove('hidden');
+        const violationsList = document.getElementById('violationsList');
+        violationsList.innerHTML = data.violations.map(v => `<li>• ${v}</li>`).join('');
+    } else {
+        violationsContainer.classList.add('hidden');
+    }
+    
+    // Explanation
+    document.getElementById('explanationText').textContent = data.explanation;
+    const sourceLabel = document.getElementById('explanationSource');
+    if (data.ai_used) {
+        sourceLabel.textContent = 'Generated by AI';
+        sourceLabel.className = 'explanation-source ai-active';
+    } else {
+        sourceLabel.textContent = 'Rule-based fallback explanation';
+        sourceLabel.className = 'explanation-source ai-fallback';
+    }
+    
+    // Show result
+    resultDiv.classList.remove('hidden');
+    resultDiv.scrollIntoView({ behavior: 'smooth' });
+}
+
+// CSV Upload
+const uploadArea = document.getElementById('uploadArea');
+const csvFile = document.getElementById('csvFile');
+
+uploadArea.addEventListener('click', () => csvFile.click());
+uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('drag-over');
+});
+uploadArea.addEventListener('dragleave', () => {
+    uploadArea.classList.remove('drag-over');
+});
+uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('drag-over');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        csvFile.files = files;
+        uploadCSV(files[0]);
+    }
+});
+
+csvFile.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        uploadCSV(e.target.files[0]);
+    }
+});
+
+async function uploadCSV(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // Show progress
+    document.getElementById('uploadProgress').classList.remove('hidden');
+    
+    try {
+        const response = await fetch('{{ url_for("upload_csv") }}', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        document.getElementById('uploadProgress').classList.add('hidden');
+        
+        if (!data.success) {
+            showNotification('Upload failed: ' + data.error, 'danger');
+            return;
+        }
+        
+        // Show results
+        showUploadResults(data);
+        showNotification('CSV uploaded and validated successfully.', 'success');
+    } catch (error) {
+        document.getElementById('uploadProgress').classList.add('hidden');
+        showNotification('Upload error: ' + error.message, 'danger');
+    }
+}
+
+function showUploadResults(data) {
+    document.getElementById('totalRecords').textContent = data.total_records;
+    document.getElementById('compliantRecords').textContent = data.compliant;
+    document.getElementById('nonCompliantRecords').textContent = data.non_compliant;
+    document.getElementById('highRiskRecords').textContent = data.high_risk;
+    document.getElementById('uploadSummaryText').textContent = `Processed ${data.total_records} records: ${data.compliant} compliant, ${data.non_compliant} non-compliant, ${data.high_risk} high-risk.`;
+    
+    // Populate table
+    const tbody = document.getElementById('uploadResultsBody');
+    tbody.innerHTML = data.results.map(r => `
+        <tr>
+            <td>${r.email}</td>
+            <td>$${r.amount.toFixed(2)}</td>
+            <td>${r.gst}%</td>
+            <td><span class="badge badge-${r.is_compliant ? 'success' : 'danger'}">
+                ${r.status}</span></td>
+            <td><span class="badge badge-${r.risk_level.toLowerCase()}">
+                ${r.risk_level}</span></td>
+        </tr>
+    `).join('');
+    
+    document.getElementById('uploadResults').classList.remove('hidden');
+    document.getElementById('uploadResults').scrollIntoView({ behavior: 'smooth' });
+}
+
+function downloadReport() {
+    window.location.href = '{{ url_for("download_report") }}';
+}
+
+function downloadSampleCsv() {
+    const csv = `Customer Email,Transaction Amount,GST\n` +
+        `john@example.com,50000,18\n` +
+        `jane@example.com,150000,12\n` +
+        `bob@example.com,75000,5\n`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'sample_compliance_upload.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function closeSampleCsv() {
+    document.getElementById('sampleCsvModal').classList.add('hidden');
+}
+</script>
+{% endblock %}

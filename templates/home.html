@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Intelligent Compliance Automation{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="hero-section">
+        <div class="hero-grid">
+            <div class="hero-content">
+                <h1>Intelligent Compliance Automation</h1>
+                <p>Secure, modern compliance validation with AI-driven explanations and fast CSV batch reporting.</p>
+                <div class="hero-buttons">
+                    <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">Login</a>
+                    <a href="{{ url_for('signup') }}" class="btn btn-secondary btn-lg">Create Account</a>
+                </div>
+            </div>
+            <div class="hero-image">
+                <img src="{{ url_for('static', filename='images/profile.svg') }}" alt="Divayanshu Banshal" />
+            </div>
+        </div>
+    </div>
+
+    <div class="about-section" id="about">
+        <div class="about-card">
+            <h2>About the Project</h2>
+            <p>This Intelligent Compliance Automation system is built to help organizations validate transactions quickly and consistently. It uses clear rules for email, transaction amount, and GST checks, while providing risk scoring and downloadable CSV reporting.</p>
+            <ul>
+                <li>Automated compliance validation</li>
+                <li>Batch CSV upload and reporting</li>
+                <li>Secure user signup, login and session management</li>
+                <li>AI-enhanced explanations with Groq integration</li>
+            </ul>
+        </div>
+
+        <div class="profile-card">
+            <img src="{{ url_for('static', filename='images/profile.svg') }}" alt="Divayanshu Banshal" />
+            <h3>Divayanshu Banshal</h3>
+            <p>ID: 2415500158</p>
+            <p>Developer & creator of this compliance portal. Built to deliver a polished fintech-style dashboard with strong security and user-friendly controls.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
